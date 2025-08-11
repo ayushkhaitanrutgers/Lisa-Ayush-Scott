@@ -161,6 +161,6 @@ lemma H1a_pointfree (s t : ℂˣ) :
 #eval 19 + Complex.mk 3 4
 end
 
-#eval (↓ (2 : ℝ) + (2 : ℝ) : ℕ)
+example : 1=1 := by simp
 
 
