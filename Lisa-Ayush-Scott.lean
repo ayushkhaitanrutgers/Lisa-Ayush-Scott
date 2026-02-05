@@ -1,4 +1,16 @@
-import Mathlib
+import Mathlib.Algebra.Group.Subgroup.Basic
+import Mathlib.Algebra.Group.Subgroup.Lattice
+import Mathlib.Algebra.Group.Subgroup.ZPowers.Basic
+import Mathlib.Algebra.Group.TypeTags.Basic
+import Mathlib.Algebra.Ring.Basic
+import Mathlib.Data.Complex.Basic
+import Mathlib.Data.Int.Basic
+import Mathlib.Data.Nat.Choose.Basic
+import Mathlib.Data.Nat.Dist
+import Mathlib.GroupTheory.Abelianization
+import Mathlib.GroupTheory.FreeGroup.Basic
+import Mathlib.GroupTheory.OrderOfElement
+import Mathlib.GroupTheory.PresentedGroup
 
 open Classical
 
@@ -494,25 +506,431 @@ lemma zerogenstrivial :
   · intro e
     exact Y_im_zero (c := c) e
 
-axiom perfect_G_axiom (c : ℕ → ℕ) : perfect_G_prop (c := c)
+/-! ## Toral subgroup relations and conjugation formulas -/
+
+@[simp] lemma H1_one : H1G (c := c) (1 : ℂˣ) = 1 := by
+  have h := H1_mul (c := c) (1 : ℂˣ) 1
+  have h' :
+      H1G (c := c) (1 : ℂˣ) * H1G (c := c) (1 : ℂˣ) =
+        H1G (c := c) (1 : ℂˣ) * 1 := by
+    simpa using h
+  exact mul_left_cancel h'
+
+@[simp] lemma H2_one : H2G (c := c) (1 : ℂˣ) = 1 := by
+  have h := H2_mul (c := c) (1 : ℂˣ) 1
+  have h' :
+      H2G (c := c) (1 : ℂˣ) * H2G (c := c) (1 : ℂˣ) =
+        H2G (c := c) (1 : ℂˣ) * 1 := by
+    simpa using h
+  exact mul_left_cancel h'
+
+@[simp] lemma H1_inv (s : ℂˣ) : (H1G (c := c) s)⁻¹ = H1G (c := c) (s⁻¹) := by
+  have h := H1_mul (c := c) s s⁻¹
+  have h' : H1G (c := c) s * H1G (c := c) (s⁻¹) = 1 := by
+    simpa [H1_one (c := c)] using h
+  have h'' : H1G (c := c) (s⁻¹) = (H1G (c := c) s)⁻¹ :=
+    (mul_eq_one_iff_eq_inv').1 h'
+  simpa using h''.symm
+
+@[simp] lemma H2_inv (s : ℂˣ) : (H2G (c := c) s)⁻¹ = H2G (c := c) (s⁻¹) := by
+  have h := H2_mul (c := c) s s⁻¹
+  have h' : H2G (c := c) s * H2G (c := c) (s⁻¹) = 1 := by
+    simpa [H2_one (c := c)] using h
+  have h'' : H2G (c := c) (s⁻¹) = (H2G (c := c) s)⁻¹ :=
+    (mul_eq_one_iff_eq_inv').1 h'
+  simpa using h''.symm
+
+lemma mem_toral_H1 (s : ℂˣ) : H1G (c := c) s ∈ toralSubgroup (c := c) := by
+  refine Subgroup.subset_closure ?_
+  exact Or.inl ⟨s, rfl⟩
+
+lemma mem_toral_H2 (s : ℂˣ) : H2G (c := c) s ∈ toralSubgroup (c := c) := by
+  refine Subgroup.subset_closure ?_
+  exact Or.inr ⟨s, rfl⟩
+
+lemma mem_unipotent_Xneg1 (u : ℂ) : Xneg1G (c := c) u ∈ unipotentSubgroup (c := c) := by
+  refine Subgroup.subset_closure ?_
+  exact Or.inl ⟨u, rfl⟩
+
+lemma mem_unipotent_Yneg1 (u : ℂ) : Yneg1G (c := c) u ∈ unipotentSubgroup (c := c) := by
+  refine Subgroup.subset_closure ?_
+  exact Or.inr (Or.inl ⟨u, rfl⟩)
+
+lemma mem_unipotent_X (e : IndexE c) (u : ℂ) : XG (c := c) e u ∈ unipotentSubgroup (c := c) := by
+  refine Subgroup.subset_closure ?_
+  exact Or.inr (Or.inr (Or.inl ⟨e, u, rfl⟩))
+
+lemma mem_unipotent_Y (e : IndexE c) (u : ℂ) : YG (c := c) e u ∈ unipotentSubgroup (c := c) := by
+  refine Subgroup.subset_closure ?_
+  exact Or.inr (Or.inr (Or.inr ⟨e, u, rfl⟩))
+
+lemma H1_conj_Xneg1 (s : ℂˣ) (u : ℂ) :
+    H1G (c := c) s * Xneg1G (c := c) u * H1G (c := c) (s⁻¹)
+      = Xneg1G (c := c) ((s : ℂ) * u) := by
+  have h := relWord_eq_one (c := c) (RelName.Re_H1X s u)
+  have h' :
+      H1G (c := c) s * Xneg1G (c := c) u * (H1G (c := c) s)⁻¹ *
+        (Xneg1G (c := c) ((s : ℂ) * u))⁻¹ = 1 := by
+    simpa [relWord, H1, Xneg1, ofGen, mul_assoc] using h
+  have h'' :
+      (H1G (c := c) s * Xneg1G (c := c) u * (H1G (c := c) s)⁻¹) *
+        (Xneg1G (c := c) ((s : ℂ) * u))⁻¹ = 1 := by
+    simpa [mul_assoc] using h'
+  simpa [H1_inv (c := c)] using (mul_inv_eq_one.mp h'')
+
+lemma H2_conj_Xneg1 (s : ℂˣ) (u : ℂ) :
+    H2G (c := c) s * Xneg1G (c := c) u * H2G (c := c) (s⁻¹)
+      = Xneg1G (c := c) ((s⁻¹ : ℂ) * u) := by
+  have h := relWord_eq_one (c := c) (RelName.Re_H2X s u)
+  have h' :
+      H2G (c := c) s * Xneg1G (c := c) u * (H2G (c := c) s)⁻¹ *
+        (Xneg1G (c := c) ((s⁻¹ : ℂ) * u))⁻¹ = 1 := by
+    simpa [relWord, H2, Xneg1, ofGen, mul_assoc] using h
+  have h'' :
+      (H2G (c := c) s * Xneg1G (c := c) u * (H2G (c := c) s)⁻¹) *
+        (Xneg1G (c := c) ((s⁻¹ : ℂ) * u))⁻¹ = 1 := by
+    simpa [mul_assoc] using h'
+  simpa [H2_inv (c := c)] using (mul_inv_eq_one.mp h'')
+
+lemma H1_conj_Yneg1 (s : ℂˣ) (u : ℂ) :
+    H1G (c := c) s * Yneg1G (c := c) u * H1G (c := c) (s⁻¹)
+      = Yneg1G (c := c) ((s⁻¹ : ℂ) * u) := by
+  have h := relWord_eq_one (c := c) (RelName.Re_H1Y s u)
+  have h' :
+      H1G (c := c) s * Yneg1G (c := c) u * (H1G (c := c) s)⁻¹ *
+        (Yneg1G (c := c) ((s⁻¹ : ℂ) * u))⁻¹ = 1 := by
+    simpa [relWord, H1, Yneg1, ofGen, mul_assoc] using h
+  have h'' :
+      (H1G (c := c) s * Yneg1G (c := c) u * (H1G (c := c) s)⁻¹) *
+        (Yneg1G (c := c) ((s⁻¹ : ℂ) * u))⁻¹ = 1 := by
+    simpa [mul_assoc] using h'
+  simpa [H1_inv (c := c)] using (mul_inv_eq_one.mp h'')
+
+lemma H2_conj_Yneg1 (s : ℂˣ) (u : ℂ) :
+    H2G (c := c) s * Yneg1G (c := c) u * H2G (c := c) (s⁻¹)
+      = Yneg1G (c := c) ((s : ℂ) * u) := by
+  have h := relWord_eq_one (c := c) (RelName.Re_H2Y s u)
+  have h' :
+      H2G (c := c) s * Yneg1G (c := c) u * (H2G (c := c) s)⁻¹ *
+        (Yneg1G (c := c) ((s : ℂ) * u))⁻¹ = 1 := by
+    simpa [relWord, H2, Yneg1, ofGen, mul_assoc] using h
+  have h'' :
+      (H2G (c := c) s * Yneg1G (c := c) u * (H2G (c := c) s)⁻¹) *
+        (Yneg1G (c := c) ((s : ℂ) * u))⁻¹ = 1 := by
+    simpa [mul_assoc] using h'
+  simpa [H2_inv (c := c)] using (mul_inv_eq_one.mp h'')
+
+lemma H1_conj_X (s : ℂˣ) (e : IndexE c) (u : ℂ) :
+    H1G (c := c) s * XG (c := c) e u * H1G (c := c) (s⁻¹)
+      = XG (c := c) e (((s : ℂ) ^ (e.ℓ + 1)) * u) := by
+  have h := relWord_eq_one (c := c) (RelName.Im_H1X e s u)
+  have h' :
+      H1G (c := c) s * XG (c := c) e u * (H1G (c := c) s)⁻¹ *
+        (XG (c := c) e (((s : ℂ) ^ (e.ℓ + 1)) * u))⁻¹ = 1 := by
+    simpa [relWord, H1, X, ofGen, mul_assoc] using h
+  have h'' :
+      (H1G (c := c) s * XG (c := c) e u * (H1G (c := c) s)⁻¹) *
+        (XG (c := c) e (((s : ℂ) ^ (e.ℓ + 1)) * u))⁻¹ = 1 := by
+    simpa [mul_assoc] using h'
+  simpa [H1_inv (c := c)] using (mul_inv_eq_one.mp h'')
+
+lemma H2_conj_X (s : ℂˣ) (e : IndexE c) (u : ℂ) :
+    H2G (c := c) s * XG (c := c) e u * H2G (c := c) (s⁻¹)
+      = XG (c := c) e (((s : ℂ) ^ (e.j - e.ℓ)) * u) := by
+  have h := relWord_eq_one (c := c) (RelName.Im_H2X e s u)
+  have h' :
+      H2G (c := c) s * XG (c := c) e u * (H2G (c := c) s)⁻¹ *
+        (XG (c := c) e (((s : ℂ) ^ (e.j - e.ℓ)) * u))⁻¹ = 1 := by
+    simpa [relWord, H2, X, ofGen, mul_assoc] using h
+  have h'' :
+      (H2G (c := c) s * XG (c := c) e u * (H2G (c := c) s)⁻¹) *
+        (XG (c := c) e (((s : ℂ) ^ (e.j - e.ℓ)) * u))⁻¹ = 1 := by
+    simpa [mul_assoc] using h'
+  simpa [H2_inv (c := c)] using (mul_inv_eq_one.mp h'')
+
+lemma H1_conj_Y (s : ℂˣ) (e : IndexE c) (u : ℂ) :
+    H1G (c := c) s * YG (c := c) e u * H1G (c := c) (s⁻¹)
+      = YG (c := c) e (((s⁻¹ : ℂ) ^ (e.ℓ + 1)) * u) := by
+  have h := relWord_eq_one (c := c) (RelName.Im_H1Y e s u)
+  have h' :
+      H1G (c := c) s * YG (c := c) e u * (H1G (c := c) s)⁻¹ *
+        (YG (c := c) e (((s⁻¹ : ℂ) ^ (e.ℓ + 1)) * u))⁻¹ = 1 := by
+    simpa [relWord, H1, Y, ofGen, mul_assoc] using h
+  have h'' :
+      (H1G (c := c) s * YG (c := c) e u * (H1G (c := c) s)⁻¹) *
+        (YG (c := c) e (((s⁻¹ : ℂ) ^ (e.ℓ + 1)) * u))⁻¹ = 1 := by
+    simpa [mul_assoc] using h'
+  simpa [H1_inv (c := c)] using (mul_inv_eq_one.mp h'')
+
+lemma H2_conj_Y (s : ℂˣ) (e : IndexE c) (u : ℂ) :
+    H2G (c := c) s * YG (c := c) e u * H2G (c := c) (s⁻¹)
+      = YG (c := c) e (((s⁻¹ : ℂ) ^ (e.j - e.ℓ)) * u) := by
+  have h := relWord_eq_one (c := c) (RelName.Im_H2Y e s u)
+  have h' :
+      H2G (c := c) s * YG (c := c) e u * (H2G (c := c) s)⁻¹ *
+        (YG (c := c) e (((s⁻¹ : ℂ) ^ (e.j - e.ℓ)) * u))⁻¹ = 1 := by
+    simpa [relWord, H2, Y, ofGen, mul_assoc] using h
+  have h'' :
+      (H2G (c := c) s * YG (c := c) e u * (H2G (c := c) s)⁻¹) *
+        (YG (c := c) e (((s⁻¹ : ℂ) ^ (e.j - e.ℓ)) * u))⁻¹ = 1 := by
+    simpa [mul_assoc] using h'
+  simpa [H2_inv (c := c)] using (mul_inv_eq_one.mp h'')
+
+lemma H1_conj_mem_unipotent (s : ℂˣ) {u : G (c := c)}
+    (hu : u ∈ unipotentSubgroup (c := c)) :
+    H1G (c := c) s * u * H1G (c := c) (s⁻¹) ∈ unipotentSubgroup (c := c) := by
+  let Ugen : Set (G (c := c)) :=
+    { g | (∃ u, g = Xneg1G (c := c) u)
+      ∨ (∃ u, g = Yneg1G (c := c) u)
+      ∨ (∃ e u, g = XG (c := c) e u)
+      ∨ (∃ e u, g = YG (c := c) e u) }
+  have hu' : u ∈ Subgroup.closure Ugen := by
+    simpa [unipotentSubgroup, Ugen] using hu
+  refine Subgroup.closure_induction (k := Ugen)
+    (p := fun u _ =>
+      H1G (c := c) s * u * H1G (c := c) (s⁻¹) ∈ unipotentSubgroup (c := c))
+    ?gen ?one ?mul ?inv hu'
+  · intro u hu
+    rcases hu with ⟨u0, rfl⟩ | ⟨u0, rfl⟩ | ⟨e, u0, rfl⟩ | ⟨e, u0, rfl⟩
+    ·
+      have h := H1_conj_Xneg1 (c := c) s u0
+      simpa using (h ▸ mem_unipotent_Xneg1 (c := c) ((s : ℂ) * u0))
+    ·
+      have h := H1_conj_Yneg1 (c := c) s u0
+      simpa using (h ▸ mem_unipotent_Yneg1 (c := c) ((s⁻¹ : ℂ) * u0))
+    ·
+      have h := H1_conj_X (c := c) s e u0
+      simpa using (h ▸ mem_unipotent_X (c := c) e (((s : ℂ) ^ (e.ℓ + 1)) * u0))
+    ·
+      have h := H1_conj_Y (c := c) s e u0
+      simpa using (h ▸ mem_unipotent_Y (c := c) e (((s⁻¹ : ℂ) ^ (e.ℓ + 1)) * u0))
+  · simpa [mul_assoc, H1_mul, H1_one] using (unipotentSubgroup (c := c)).one_mem
+  · intro x y hx hy ihx ihy
+    have hmem := (unipotentSubgroup (c := c)).mul_mem ihx ihy
+    have hconj_mul :
+        (H1G (c := c) s * x * H1G (c := c) (s⁻¹)) *
+            (H1G (c := c) s * y * H1G (c := c) (s⁻¹)) =
+          H1G (c := c) s * (x * y) * H1G (c := c) (s⁻¹) := by
+      calc
+        (H1G (c := c) s * x * H1G (c := c) (s⁻¹)) *
+            (H1G (c := c) s * y * H1G (c := c) (s⁻¹)) =
+            H1G (c := c) s * x * (H1G (c := c) (s⁻¹) * H1G (c := c) s) * y *
+              H1G (c := c) (s⁻¹) := by simp [mul_assoc]
+        _ = H1G (c := c) s * x * y * H1G (c := c) (s⁻¹) := by
+              simp [H1_mul, H1_one, mul_assoc]
+        _ = H1G (c := c) s * (x * y) * H1G (c := c) (s⁻¹) := by
+              simp [mul_assoc]
+    simpa [hconj_mul] using hmem
+  · intro x hx ihx
+    have hmem := (unipotentSubgroup (c := c)).inv_mem ihx
+    have hconj_inv :
+        (H1G (c := c) s * x * H1G (c := c) (s⁻¹))⁻¹ =
+          H1G (c := c) s * x⁻¹ * H1G (c := c) (s⁻¹) := by
+      simp [mul_assoc, mul_inv_rev, H1_inv]
+    simpa [hconj_inv] using hmem
+
+lemma H2_conj_mem_unipotent (s : ℂˣ) {u : G (c := c)}
+    (hu : u ∈ unipotentSubgroup (c := c)) :
+    H2G (c := c) s * u * H2G (c := c) (s⁻¹) ∈ unipotentSubgroup (c := c) := by
+  let Ugen : Set (G (c := c)) :=
+    { g | (∃ u, g = Xneg1G (c := c) u)
+      ∨ (∃ u, g = Yneg1G (c := c) u)
+      ∨ (∃ e u, g = XG (c := c) e u)
+      ∨ (∃ e u, g = YG (c := c) e u) }
+  have hu' : u ∈ Subgroup.closure Ugen := by
+    simpa [unipotentSubgroup, Ugen] using hu
+  refine Subgroup.closure_induction (k := Ugen)
+    (p := fun u _ =>
+      H2G (c := c) s * u * H2G (c := c) (s⁻¹) ∈ unipotentSubgroup (c := c))
+    ?gen ?one ?mul ?inv hu'
+  · intro u hu
+    rcases hu with ⟨u0, rfl⟩ | ⟨u0, rfl⟩ | ⟨e, u0, rfl⟩ | ⟨e, u0, rfl⟩
+    ·
+      have h := H2_conj_Xneg1 (c := c) s u0
+      simpa using (h ▸ mem_unipotent_Xneg1 (c := c) ((s⁻¹ : ℂ) * u0))
+    ·
+      have h := H2_conj_Yneg1 (c := c) s u0
+      simpa using (h ▸ mem_unipotent_Yneg1 (c := c) ((s : ℂ) * u0))
+    ·
+      have h := H2_conj_X (c := c) s e u0
+      simpa using (h ▸ mem_unipotent_X (c := c) e (((s : ℂ) ^ (e.j - e.ℓ)) * u0))
+    ·
+      have h := H2_conj_Y (c := c) s e u0
+      simpa using (h ▸ mem_unipotent_Y (c := c) e (((s⁻¹ : ℂ) ^ (e.j - e.ℓ)) * u0))
+  · simpa [mul_assoc, H2_mul, H2_one] using (unipotentSubgroup (c := c)).one_mem
+  · intro x y hx hy ihx ihy
+    have hmem := (unipotentSubgroup (c := c)).mul_mem ihx ihy
+    have hconj_mul :
+        (H2G (c := c) s * x * H2G (c := c) (s⁻¹)) *
+            (H2G (c := c) s * y * H2G (c := c) (s⁻¹)) =
+          H2G (c := c) s * (x * y) * H2G (c := c) (s⁻¹) := by
+      calc
+        (H2G (c := c) s * x * H2G (c := c) (s⁻¹)) *
+            (H2G (c := c) s * y * H2G (c := c) (s⁻¹)) =
+            H2G (c := c) s * x * (H2G (c := c) (s⁻¹) * H2G (c := c) s) * y *
+              H2G (c := c) (s⁻¹) := by simp [mul_assoc]
+        _ = H2G (c := c) s * x * y * H2G (c := c) (s⁻¹) := by
+              simp [H2_mul, H2_one, mul_assoc]
+        _ = H2G (c := c) s * (x * y) * H2G (c := c) (s⁻¹) := by
+              simp [mul_assoc]
+    simpa [hconj_mul] using hmem
+  · intro x hx ihx
+    have hmem := (unipotentSubgroup (c := c)).inv_mem ihx
+    have hconj_inv :
+        (H2G (c := c) s * x * H2G (c := c) (s⁻¹))⁻¹ =
+          H2G (c := c) s * x⁻¹ * H2G (c := c) (s⁻¹) := by
+      simp [mul_assoc, mul_inv_rev, H2_inv]
+    simpa [hconj_inv] using hmem
+
+variable {perfect_G_axiom : ∀ c : ℕ → ℕ, perfect_G_prop (c := c)}
+include perfect_G_axiom
 
 theorem perfect_G : commutator (G (c := c)) = ⊤ := by
   simpa [perfect_G_prop] using perfect_G_axiom (c := c)
+omit perfect_G_axiom
 
 def toralSubgroup_abelian_prop : Prop :=
   ∀ {x y : G (c := c)}, x ∈ toralSubgroup (c := c) →
     y ∈ toralSubgroup (c := c) → x * y = y * x
 
-axiom toralSubgroup_abelian_axiom (c : ℕ → ℕ) : toralSubgroup_abelian_prop (c := c)
+theorem toralSubgroup_abelian : toralSubgroup_abelian_prop (c := c) := by
+  intro x y hx hy
+  let S : Set (G (c := c)) :=
+    { g | (∃ s, g = H1G (c := c) s) ∨ (∃ s, g = H2G (c := c) s) }
+  -- show every x in the closure of S commutes with every y in the closure of S
+  have hcomm :
+      ∀ x ∈ toralSubgroup (c := c),
+        ∀ y ∈ toralSubgroup (c := c), x * y = y * x := by
+    intro x hx
+    -- closure induction on x
+    have hx' : x ∈ Subgroup.closure S := by
+      simpa [toralSubgroup, S] using hx
+    refine Subgroup.closure_induction (k := S)
+      (p := fun x _ => ∀ y ∈ toralSubgroup (c := c), x * y = y * x)
+      ?gen ?one ?mul ?inv hx'
+    · intro x hx y hy
+      have hy' : y ∈ Subgroup.closure S := by
+        simpa [toralSubgroup, S] using hy
+      -- closure induction on y
+      refine Subgroup.closure_induction (k := S)
+        (p := fun y _ => x * y = y * x)
+        ?geny ?oney ?muly ?invy hy'
+      · intro y hy
+        rcases hx with ⟨s, rfl⟩ | ⟨s, rfl⟩
+        · rcases hy with ⟨t, rfl⟩ | ⟨t, rfl⟩
+          · -- H1/H1
+            calc
+              H1G (c := c) s * H1G (c := c) t =
+                  H1G (c := c) (s * t) := H1_mul (c := c) s t
+              _ = H1G (c := c) (t * s) := by simpa [mul_comm]
+              _ = H1G (c := c) t * H1G (c := c) s := (H1_mul (c := c) t s).symm
+          · -- H1/H2
+            simpa using (H1H2_comm (c := c) s t)
+        · rcases hy with ⟨t, rfl⟩ | ⟨t, rfl⟩
+          · -- H2/H1
+            simpa using (H1H2_comm (c := c) t s).symm
+          · -- H2/H2
+            calc
+              H2G (c := c) s * H2G (c := c) t =
+                  H2G (c := c) (s * t) := H2_mul (c := c) s t
+              _ = H2G (c := c) (t * s) := by simpa [mul_comm]
+              _ = H2G (c := c) t * H2G (c := c) s := (H2_mul (c := c) t s).symm
+      · simp [mul_assoc]
+      · intro y z hy hz ihy ihz
+        calc
+          x * (y * z) = (x * y) * z := by simp [mul_assoc]
+          _ = (y * x) * z := by simpa [ihy] using rfl
+          _ = y * (x * z) := by simp [mul_assoc]
+          _ = y * (z * x) := by simpa [ihz] using rfl
+          _ = (y * z) * x := by simp [mul_assoc]
+      · intro y hy ihy
+        have hxy := ihy
+        have h1 := congrArg (fun z => z * y⁻¹) hxy
+        have h2 := congrArg (fun z => y⁻¹ * z) h1
+        simpa [mul_assoc] using h2.symm
+    · intro y hy
+      simp [mul_assoc]
+    · intro x y hx hy ihx ihy
+      intro z hz
+      calc
+        (x * y) * z = x * (y * z) := by simp [mul_assoc]
+        _ = x * (z * y) := by simpa [ihy z hz] using rfl
+        _ = (x * z) * y := by simp [mul_assoc]
+        _ = (z * x) * y := by simpa [ihx z hz] using rfl
+        _ = z * (x * y) := by simp [mul_assoc]
+    · intro x hx ihx
+      intro y hy
+      have hxy := ihx y hy
+      have h1 := congrArg (fun z => x⁻¹ * z) hxy
+      have h2 := congrArg (fun z => z * x⁻¹) h1
+      simpa [mul_assoc] using h2.symm
+  exact hcomm x hx y hy
 
-theorem toralSubgroup_abelian : toralSubgroup_abelian_prop (c := c) :=
-  toralSubgroup_abelian_axiom (c := c)
+lemma H1_mem_normalizer (s : ℂˣ) :
+    H1G (c := c) s ∈ Subgroup.normalizer (unipotentSubgroup (c := c)) := by
+  refine (Subgroup.mem_normalizer_iff (H := unipotentSubgroup (c := c))).2 ?_
+  intro u
+  constructor
+  · intro hu
+    simpa [H1_inv] using (H1_conj_mem_unipotent (c := c) s hu)
+  · intro hu
+    have hu' :
+        H1G (c := c) (s⁻¹) *
+            (H1G (c := c) s * u * H1G (c := c) (s⁻¹)) *
+            H1G (c := c) s ∈ unipotentSubgroup (c := c) :=
+      (by
+        have := H1_conj_mem_unipotent (c := c) (s := s⁻¹) hu
+        simpa [H1_inv] using this)
+    have hconj :
+        H1G (c := c) (s⁻¹) *
+            (H1G (c := c) s * u * H1G (c := c) (s⁻¹)) *
+            H1G (c := c) s = u := by
+      calc
+        H1G (c := c) (s⁻¹) *
+            (H1G (c := c) s * u * H1G (c := c) (s⁻¹)) *
+            H1G (c := c) s =
+            (H1G (c := c) (s⁻¹) * H1G (c := c) s) * u *
+              (H1G (c := c) (s⁻¹) * H1G (c := c) s) := by
+                simp [mul_assoc]
+        _ = u := by simp [H1_mul, H1_one, mul_assoc]
+    simpa [hconj] using hu'
 
-axiom H_normalizes_U_axiom (c : ℕ → ℕ) : H_normalizes_U_prop (c := c)
+lemma H2_mem_normalizer (s : ℂˣ) :
+    H2G (c := c) s ∈ Subgroup.normalizer (unipotentSubgroup (c := c)) := by
+  refine (Subgroup.mem_normalizer_iff (H := unipotentSubgroup (c := c))).2 ?_
+  intro u
+  constructor
+  · intro hu
+    simpa [H2_inv] using (H2_conj_mem_unipotent (c := c) s hu)
+  · intro hu
+    have hu' :
+        H2G (c := c) (s⁻¹) *
+            (H2G (c := c) s * u * H2G (c := c) (s⁻¹)) *
+            H2G (c := c) s ∈ unipotentSubgroup (c := c) :=
+      (by
+        have := H2_conj_mem_unipotent (c := c) (s := s⁻¹) hu
+        simpa [H2_inv] using this)
+    have hconj :
+        H2G (c := c) (s⁻¹) *
+            (H2G (c := c) s * u * H2G (c := c) (s⁻¹)) *
+            H2G (c := c) s = u := by
+      calc
+        H2G (c := c) (s⁻¹) *
+            (H2G (c := c) s * u * H2G (c := c) (s⁻¹)) *
+            H2G (c := c) s =
+            (H2G (c := c) (s⁻¹) * H2G (c := c) s) * u *
+              (H2G (c := c) (s⁻¹) * H2G (c := c) s) := by
+                simp [mul_assoc]
+        _ = u := by simp [H2_mul, H2_one, mul_assoc]
+    simpa [hconj] using hu'
 
 theorem H_normalizes_U :
     toralSubgroup (c := c) ≤ Subgroup.normalizer (unipotentSubgroup (c := c)) := by
-  simpa [H_normalizes_U_prop] using H_normalizes_U_axiom (c := c)
+  refine (Subgroup.closure_le (K := Subgroup.normalizer (unipotentSubgroup (c := c)))).2 ?_
+  intro g hg
+  rcases hg with ⟨s, rfl⟩ | ⟨s, rfl⟩
+  · exact H1_mem_normalizer (c := c) s
+  · exact H2_mem_normalizer (c := c) s
 
 lemma commute_of_HU {h u : G (c := c)}
     (hh : h ∈ toralSubgroup (c := c)) (hu : u ∈ unipotentSubgroup (c := c)) :
@@ -524,17 +942,65 @@ lemma commute_of_HU {h u : G (c := c)}
   refine ⟨h⁻¹ * u * h, (hiff).1 hu, ?_⟩
   simp [mul_assoc]
 
-axiom G_eq_HU_axiom (c : ℕ → ℕ) : G_eq_HU_prop (c := c)
-
 theorem G_eq_HU :
     (toralSubgroup (c := c)) ⊔ (unipotentSubgroup (c := c)) = ⊤ := by
-  simpa [G_eq_HU_prop] using G_eq_HU_axiom (c := c)
+  apply le_antisymm le_top
+  -- show ⊤ ≤ toralSubgroup ⊔ unipotentSubgroup by generators
+  have hsubset :
+      Set.range (of (c := c)) ⊆
+        (↑((toralSubgroup (c := c)) ⊔ (unipotentSubgroup (c := c))) :
+          Set (G (c := c))) := by
+    rintro g ⟨gen, rfl⟩
+    cases gen with
+    | H1 s =>
+        simpa [H1G, of] using
+          (Subgroup.mem_sup_left (mem_toral_H1 (c := c) s) :
+            H1G (c := c) s ∈ (toralSubgroup (c := c)) ⊔ (unipotentSubgroup (c := c)))
+    | H2 s =>
+        simpa [H2G, of] using
+          (Subgroup.mem_sup_left (mem_toral_H2 (c := c) s) :
+            H2G (c := c) s ∈ (toralSubgroup (c := c)) ⊔ (unipotentSubgroup (c := c)))
+    | Xneg1 u =>
+        simpa [Xneg1G, of] using
+          (Subgroup.mem_sup_right (mem_unipotent_Xneg1 (c := c) u) :
+            Xneg1G (c := c) u ∈ (toralSubgroup (c := c)) ⊔ (unipotentSubgroup (c := c)))
+    | Yneg1 u =>
+        simpa [Yneg1G, of] using
+          (Subgroup.mem_sup_right (mem_unipotent_Yneg1 (c := c) u) :
+            Yneg1G (c := c) u ∈ (toralSubgroup (c := c)) ⊔ (unipotentSubgroup (c := c)))
+    | X e u =>
+        simpa [XG, of] using
+          (Subgroup.mem_sup_right (mem_unipotent_X (c := c) e u) :
+            XG (c := c) e u ∈ (toralSubgroup (c := c)) ⊔ (unipotentSubgroup (c := c)))
+    | Y e u =>
+        simpa [YG, of] using
+          (Subgroup.mem_sup_right (mem_unipotent_Y (c := c) e u) :
+            YG (c := c) e u ∈ (toralSubgroup (c := c)) ⊔ (unipotentSubgroup (c := c)))
+  have hclosure :
+      Subgroup.closure (Set.range (of (c := c))) ≤
+        (toralSubgroup (c := c)) ⊔ (unipotentSubgroup (c := c)) :=
+    (Subgroup.closure_le (K := (toralSubgroup (c := c)) ⊔ (unipotentSubgroup (c := c)))).2 hsubset
+  -- closure of generators is top
+  have hgen :
+      Subgroup.closure (Set.range (of (c := c))) =
+        (⊤ : Subgroup (G (c := c))) := by
+    simpa [of] using
+      (PresentedGroup.closure_range_of (rels := rels (c := c)))
+  have htop :
+      (⊤ : Subgroup (G (c := c))) ≤
+        (toralSubgroup (c := c)) ⊔ (unipotentSubgroup (c := c)) := by
+    -- rewrite the goal to the closure statement
+    rw [← hgen]
+    exact hclosure
+  exact htop
 
-axiom center_subset_H_axiom (c : ℕ → ℕ) : center_subset_H_prop (c := c)
+variable {center_subset_H_axiom : ∀ c : ℕ → ℕ, center_subset_H_prop (c := c)}
+include center_subset_H_axiom
 
 theorem center_subset_H :
     Subgroup.center (G (c := c)) ≤ toralSubgroup (c := c) := by
   simpa [center_subset_H_prop] using center_subset_H_axiom (c := c)
+omit center_subset_H_axiom
 
 end Gm
 
@@ -664,49 +1130,67 @@ def Uplus (e : IndexE c) : Subgroup (F (c := c)) :=
 def Uminus (e : IndexE c) : Subgroup (F (c := c)) :=
   Subgroup.closure (Set.range (fun u : ℂ => YF (c := c) e u))
 
-axiom nontrivial_axiom (c : ℕ → ℕ) : Nontrivial (F (c := c))
+variable {nontrivial_axiom : ∀ c : ℕ → ℕ, Nontrivial (F (c := c))}
+include nontrivial_axiom
 
 theorem nontrivial_F : Nontrivial (F (c := c)) :=
   nontrivial_axiom (c := c)
+omit nontrivial_axiom
 
-axiom phi_neg1 (c : ℕ → ℕ) : Cadd →* F (c := c)
-axiom phi_neg1_spec (c : ℕ → ℕ) :
-    ∀ u : ℂ, phi_neg1 (c := c) (Multiplicative.ofAdd u) = Xneg1F (c := c) u
-axiom phi_neg1_range_axiom (c : ℕ → ℕ) :
-    (phi_neg1 (c := c)).range = Uplus_neg1 (c := c)
-axiom phi_neg1_injective_axiom (c : ℕ → ℕ) :
-    Function.Injective (phi_neg1 (c := c))
+variable {phi_neg1 : ∀ c : ℕ → ℕ, Cadd →* F (c := c)}
+variable {phi_neg1_spec :
+    ∀ c : ℕ → ℕ, ∀ u : ℂ,
+      phi_neg1 (c := c) (Multiplicative.ofAdd u) = Xneg1F (c := c) u}
+variable {phi_neg1_range_axiom :
+    ∀ c : ℕ → ℕ, (phi_neg1 (c := c)).range = Uplus_neg1 (c := c)}
+variable {phi_neg1_injective_axiom :
+    ∀ c : ℕ → ℕ, Function.Injective (phi_neg1 (c := c))}
 
-axiom phi_im (c : ℕ → ℕ) (e : IndexE c) : Cadd →* F (c := c)
-axiom phi_im_spec (c : ℕ → ℕ) (e : IndexE c) :
-    ∀ u : ℂ, phi_im (c := c) e (Multiplicative.ofAdd u) = XF (c := c) e u
-axiom phi_im_range_axiom (c : ℕ → ℕ) (e : IndexE c) :
-    (phi_im (c := c) e).range = Uplus (c := c) e
-axiom phi_im_injective_axiom (c : ℕ → ℕ) (e : IndexE c) :
-    Function.Injective (phi_im (c := c) e)
+variable {phi_im : ∀ c : ℕ → ℕ, IndexE c → Cadd →* F (c := c)}
+variable {phi_im_spec :
+    ∀ c : ℕ → ℕ, ∀ e : IndexE c, ∀ u : ℂ,
+      phi_im (c := c) e (Multiplicative.ofAdd u) = XF (c := c) e u}
+variable {phi_im_range_axiom :
+    ∀ c : ℕ → ℕ, ∀ e : IndexE c, (phi_im (c := c) e).range = Uplus (c := c) e}
+variable {phi_im_injective_axiom :
+    ∀ c : ℕ → ℕ, ∀ e : IndexE c, Function.Injective (phi_im (c := c) e)}
 
-axiom Uplus_neg1_nontrivial_axiom (c : ℕ → ℕ) : Nontrivial (Uplus_neg1 (c := c))
-axiom Uplus_nontrivial_axiom (c : ℕ → ℕ) (e : IndexE c) : Nontrivial (Uplus (c := c) e)
+variable {Uplus_neg1_nontrivial_axiom :
+    ∀ c : ℕ → ℕ, Nontrivial (Uplus_neg1 (c := c))}
+variable {Uplus_nontrivial_axiom :
+    ∀ c : ℕ → ℕ, ∀ e : IndexE c, Nontrivial (Uplus (c := c) e)}
 
+include phi_neg1_range_axiom
 theorem phi_neg1_range :
     (phi_neg1 (c := c)).range = Uplus_neg1 (c := c) :=
   phi_neg1_range_axiom (c := c)
+omit phi_neg1_range_axiom
 
+include phi_im_range_axiom
 theorem phi_im_range (e : IndexE c) :
     (phi_im (c := c) e).range = Uplus (c := c) e :=
   phi_im_range_axiom (c := c) e
+omit phi_im_range_axiom
 
+include phi_neg1_injective_axiom
 theorem phi_neg1_injective : Function.Injective (phi_neg1 (c := c)) :=
   phi_neg1_injective_axiom (c := c)
+omit phi_neg1_injective_axiom
 
+include phi_im_injective_axiom
 theorem phi_im_injective (e : IndexE c) : Function.Injective (phi_im (c := c) e) :=
   phi_im_injective_axiom (c := c) e
+omit phi_im_injective_axiom
 
+include Uplus_neg1_nontrivial_axiom
 theorem Uplus_neg1_nontrivial : Nontrivial (Uplus_neg1 (c := c)) :=
   Uplus_neg1_nontrivial_axiom (c := c)
+omit Uplus_neg1_nontrivial_axiom
 
+include Uplus_nontrivial_axiom
 theorem Uplus_nontrivial (e : IndexE c) : Nontrivial (Uplus (c := c) e) :=
   Uplus_nontrivial_axiom (c := c) e
+omit Uplus_nontrivial_axiom
 
 end Fm
 
@@ -926,24 +1410,28 @@ theorem nontrivial_of_injective {H G : Type*} [Group H] [Group G] [Nontrivial H]
   apply hf
   simpa using hfx
 
-axiom Xneg1_eq_one_iff_axiom (c : ℕ → ℕ) (u : ℂ) :
-    Xneg1S (c := c) u = 1 ↔ u = 0
-axiom Yneg1_eq_one_iff_axiom (c : ℕ → ℕ) (u : ℂ) :
-    Yneg1S (c := c) u = 1 ↔ u = 0
-axiom X_eq_one_iff_axiom (c : ℕ → ℕ) (e : IndexE c) (u : ℂ) :
-    XS (c := c) e u = 1 ↔ u = 0
-axiom Y_eq_one_iff_axiom (c : ℕ → ℕ) (e : IndexE c) (u : ℂ) :
-    YS (c := c) e u = 1 ↔ u = 0
+variable {Xneg1_eq_one_iff_axiom :
+    ∀ c : ℕ → ℕ, ∀ u : ℂ, Xneg1S (c := c) u = 1 ↔ u = 0}
+variable {Yneg1_eq_one_iff_axiom :
+    ∀ c : ℕ → ℕ, ∀ u : ℂ, Yneg1S (c := c) u = 1 ↔ u = 0}
+variable {X_eq_one_iff_axiom :
+    ∀ c : ℕ → ℕ, ∀ e : IndexE c, ∀ u : ℂ, XS (c := c) e u = 1 ↔ u = 0}
+variable {Y_eq_one_iff_axiom :
+    ∀ c : ℕ → ℕ, ∀ e : IndexE c, ∀ u : ℂ, YS (c := c) e u = 1 ↔ u = 0}
 
+include Xneg1_eq_one_iff_axiom
 theorem Xneg1_eq_one_iff (u : ℂ) : Xneg1S (c := c) u = 1 ↔ u = 0 :=
   Xneg1_eq_one_iff_axiom (c := c) u
 
+include Yneg1_eq_one_iff_axiom
 theorem Yneg1_eq_one_iff (u : ℂ) : Yneg1S (c := c) u = 1 ↔ u = 0 :=
   Yneg1_eq_one_iff_axiom (c := c) u
 
+include X_eq_one_iff_axiom
 theorem X_eq_one_iff (e : IndexE c) (u : ℂ) : XS (c := c) e u = 1 ↔ u = 0 :=
   X_eq_one_iff_axiom (c := c) e u
 
+include Y_eq_one_iff_axiom
 theorem Y_eq_one_iff (e : IndexE c) (u : ℂ) : YS (c := c) e u = 1 ↔ u = 0 :=
   Y_eq_one_iff_axiom (c := c) e u
 
@@ -952,67 +1440,89 @@ theorem nontrivialgens :
       (∀ u : ℂ, Yneg1S (c := c) u = 1 ↔ u = 0) ∧
       (∀ e : IndexE c, ∀ u : ℂ, XS (c := c) e u = 1 ↔ u = 0) ∧
       (∀ e : IndexE c, ∀ u : ℂ, YS (c := c) e u = 1 ↔ u = 0) := by
-  exact ⟨Xneg1_eq_one_iff (c := c), Yneg1_eq_one_iff (c := c), X_eq_one_iff (c := c),
-    Y_eq_one_iff (c := c)⟩
+  exact ⟨Xneg1_eq_one_iff_axiom (c := c), Yneg1_eq_one_iff_axiom (c := c),
+    X_eq_one_iff_axiom (c := c), Y_eq_one_iff_axiom (c := c)⟩
 
-axiom Xneg1_infinite_order_axiom (c : ℕ → ℕ) {u : ℂ} :
-    u ≠ 0 → ¬ IsOfFinOrder (Xneg1S (c := c) u)
-axiom Yneg1_infinite_order_axiom (c : ℕ → ℕ) {u : ℂ} :
-    u ≠ 0 → ¬ IsOfFinOrder (Yneg1S (c := c) u)
-axiom X_infinite_order_axiom (c : ℕ → ℕ) {e : IndexE c} {u : ℂ} :
-    u ≠ 0 → ¬ IsOfFinOrder (XS (c := c) e u)
-axiom Y_infinite_order_axiom (c : ℕ → ℕ) {e : IndexE c} {u : ℂ} :
-    u ≠ 0 → ¬ IsOfFinOrder (YS (c := c) e u)
+variable {Xneg1_infinite_order_axiom :
+    ∀ c : ℕ → ℕ, ∀ {u : ℂ}, u ≠ 0 → ¬ IsOfFinOrder (Xneg1S (c := c) u)}
+variable {Yneg1_infinite_order_axiom :
+    ∀ c : ℕ → ℕ, ∀ {u : ℂ}, u ≠ 0 → ¬ IsOfFinOrder (Yneg1S (c := c) u)}
+variable {X_infinite_order_axiom :
+    ∀ c : ℕ → ℕ, ∀ {e : IndexE c} {u : ℂ}, u ≠ 0 → ¬ IsOfFinOrder (XS (c := c) e u)}
+variable {Y_infinite_order_axiom :
+    ∀ c : ℕ → ℕ, ∀ {e : IndexE c} {u : ℂ}, u ≠ 0 → ¬ IsOfFinOrder (YS (c := c) e u)}
 
+include Xneg1_infinite_order_axiom
 theorem Xneg1_infinite_order {u : ℂ} (hu : u ≠ 0) :
     ¬ IsOfFinOrder (Xneg1S (c := c) u) :=
   Xneg1_infinite_order_axiom (c := c) hu
+omit Xneg1_infinite_order_axiom
 
+include Yneg1_infinite_order_axiom
 theorem Yneg1_infinite_order {u : ℂ} (hu : u ≠ 0) :
     ¬ IsOfFinOrder (Yneg1S (c := c) u) :=
   Yneg1_infinite_order_axiom (c := c) hu
+omit Yneg1_infinite_order_axiom
 
+include X_infinite_order_axiom
 theorem X_infinite_order {e : IndexE c} {u : ℂ} (hu : u ≠ 0) :
     ¬ IsOfFinOrder (XS (c := c) e u) :=
   X_infinite_order_axiom (c := c) hu
+omit X_infinite_order_axiom
 
+include Y_infinite_order_axiom
 theorem Y_infinite_order {e : IndexE c} {u : ℂ} (hu : u ≠ 0) :
     ¬ IsOfFinOrder (YS (c := c) e u) :=
   Y_infinite_order_axiom (c := c) hu
+omit Y_infinite_order_axiom
 
 abbrev Zadd := Multiplicative ℤ
 
-axiom Z_to_S (c : ℕ → ℕ) (e : IndexE c) : Zadd →* S (c := c)
-axiom Z_to_S_spec (c : ℕ → ℕ) (e : IndexE c) :
-    ∀ n : ℤ, Z_to_S (c := c) e (Multiplicative.ofAdd n) = XS (c := c) e (n : ℂ)
-axiom Z_to_S_injective_axiom (c : ℕ → ℕ) (e : IndexE c) :
-    Function.Injective (Z_to_S (c := c) e)
-axiom exists_injective_Z_to_S (c : ℕ → ℕ) :
-    ∃ e : IndexE c, Function.Injective (Z_to_S (c := c) e)
+variable {Z_to_S : ∀ c : ℕ → ℕ, IndexE c → Zadd →* S (c := c)}
+variable {Z_to_S_spec :
+    ∀ c : ℕ → ℕ, ∀ e : IndexE c, ∀ n : ℤ,
+      Z_to_S (c := c) e (Multiplicative.ofAdd n) = XS (c := c) e (n : ℂ)}
+variable {Z_to_S_injective_axiom :
+    ∀ c : ℕ → ℕ, ∀ e : IndexE c, Function.Injective (Z_to_S (c := c) e)}
+variable {exists_injective_Z_to_S :
+    ∀ c : ℕ → ℕ, ∃ e : IndexE c, Function.Injective (Z_to_S (c := c) e)}
+include
+  Z_to_S
+  Z_to_S_injective_axiom
+  exists_injective_Z_to_S
 
+include Z_to_S_injective_axiom
 theorem Z_to_S_injective (e : IndexE c) : Function.Injective (Z_to_S (c := c) e) :=
   Z_to_S_injective_axiom (c := c) e
+omit Z_to_S_injective_axiom
 
+include Z_to_S exists_injective_Z_to_S
 theorem nontrivial_S : Nontrivial (S (c := c)) := by
   classical
   obtain ⟨e, he⟩ := exists_injective_Z_to_S (c := c)
   exact nontrivial_of_injective (f := Z_to_S (c := c) e) he
+omit Z_to_S exists_injective_Z_to_S
 
-axiom X_one_iso_Z_axiom (c : ℕ → ℕ) (e : IndexE c) :
-    Zadd ≃* Subgroup.zpowers (XS (c := c) e 1)
+variable {X_one_iso_Z_axiom :
+    ∀ c : ℕ → ℕ, ∀ e : IndexE c, Zadd ≃* Subgroup.zpowers (XS (c := c) e 1)}
+include X_one_iso_Z_axiom
 
 def X_one_iso_Z (e : IndexE c) :
     Zadd ≃* Subgroup.zpowers (XS (c := c) e 1) :=
   X_one_iso_Z_axiom (c := c) e
+omit X_one_iso_Z_axiom
 
-axiom X_param_iso_C_axiom (c : ℕ → ℕ) (e : IndexE c) :
-    Multiplicative ℂ ≃* Subgroup.closure (Set.range (fun u : ℂ => XS (c := c) e u))
+variable {X_param_iso_C_axiom :
+    ∀ c : ℕ → ℕ, ∀ e : IndexE c,
+      Multiplicative ℂ ≃* Subgroup.closure (Set.range (fun u : ℂ => XS (c := c) e u))}
+include X_param_iso_C_axiom
 
 def X_param_iso_C (e : IndexE c) :
     Multiplicative ℂ ≃* Subgroup.closure (Set.range (fun u : ℂ => XS (c := c) e u)) :=
   X_param_iso_C_axiom (c := c) e
+omit X_param_iso_C_axiom
 
-axiom normal_form_conjecture (c : ℕ → ℕ) : Prop
+variable {normal_form_conjecture : ∀ c : ℕ → ℕ, Prop}
 
 end Sm
 
