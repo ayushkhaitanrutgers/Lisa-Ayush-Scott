@@ -1,16 +1,4 @@
-import Mathlib.Algebra.Group.Subgroup.Basic
-import Mathlib.Algebra.Group.Subgroup.Lattice
-import Mathlib.Algebra.Group.Subgroup.ZPowers.Basic
-import Mathlib.Algebra.Group.TypeTags.Basic
-import Mathlib.Algebra.Ring.Basic
-import Mathlib.Data.Complex.Basic
-import Mathlib.Data.Int.Basic
-import Mathlib.Data.Nat.Choose.Basic
-import Mathlib.Data.Nat.Dist
-import Mathlib.GroupTheory.Abelianization
-import Mathlib.GroupTheory.FreeGroup.Basic
-import Mathlib.GroupTheory.OrderOfElement
-import Mathlib.GroupTheory.PresentedGroup
+import Mathlib
 
 open Classical
 
